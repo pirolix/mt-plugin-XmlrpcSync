@@ -2,11 +2,12 @@ package MT::Plugin::OMV::XmlrpcSync;
 
 use strict;
 use MT::Entry;
+use MT::Template;
 use XMLRPC::Lite;
 
 use vars qw( $MYNAME $VERSION );
 $MYNAME = 'XmlrpcSync';
-$VERSION = '0.01';
+$VERSION = '0.10';
 
 use base qw( MT::Plugin );
 my $plugin = __PACKAGE__->new({
@@ -38,10 +39,16 @@ sub _entry_post_save {
     my $ctx = $opt{Context};
     my $entry = $ctx->stash ('entry')
         or return 1;
+    my $blog = $ctx->stash ('blog');
+    my $settings = &instance->get_config_value ('xmlrpc_settings', "blog:". $blog->id)
+        or return 1; # no settings
 
-    my $blog_id = $entry->blog_id;
-    my $settings = &instance->get_config_value ('xmlrpc_settings', "blog:$blog_id")
-        or return; # no settings
+    my $tmpl = MT::Template->load ({ blog_id => $blog->id, name => $MYNAME })
+        or return 1;
+    my $ctx = $tmpl->context;
+    $ctx->stash ('blog', $blog);
+    $ctx->stash ('entry', $entry);
+    my ($title, $body) = $tmpl->output =~ m/(.+)\s+([\s\S]+)/;
 
     my $pdata = load_plugindata (key_name ($entry->id)) || {};
     foreach (split /[\r\n]+/, $settings) {
@@ -54,10 +61,8 @@ sub _entry_post_save {
                     $username,
                     $password,
                     {
-                        'title' => XMLRPC::Data->type ('string', $entry->title),
-                        'description' => XMLRPC::Data->type ('string',
-                                sprintf ("<a href=\"%s\">%s</a>\n\n%s",
-                                $entry->permalink, $entry->title, $entry->text)),
+                        'title' => XMLRPC::Data->type ('string', $title),
+                        'description' => XMLRPC::Data->type ('string', $body),
                     },
                     1,
                 )->result;
@@ -65,6 +70,7 @@ sub _entry_post_save {
         }
     }
     save_plugindata (key_name ($entry->id), $pdata);
+    1;
 }
 
 

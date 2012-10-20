@@ -1,13 +1,15 @@
 package MT::Plugin::OMV::XmlrpcSync;
+# $Id$
 
 use strict;
 use MT::Entry;
 use MT::Template;
 use XMLRPC::Lite;
 
-use vars qw( $MYNAME $VERSION );
-$MYNAME = 'XmlrpcSync';
-$VERSION = '0.11';
+use vars qw( $VENDOR $MYNAME $VERSION );
+($VENDOR, $MYNAME) = (split /::/, __PACKAGE__)[-2, -1];
+(my $revision = '$Rev$') =~ s/\D//g;
+$VERSION = '0.10'. ($revision ? ".$revision" : '');
 
 use base qw( MT::Plugin );
 my $plugin = __PACKAGE__->new({
